@@ -6,7 +6,7 @@ const CoinCalculator = () => {
   const [targetAmount, setTargetAmount] = useState("");
   const [denominations, setDenominations] = useState([]);
   const [selectedDenominations, setSelectedDenominations] = useState([]);
-  const [result, setResult] = useState({ coins: [], message: null });
+  const [result, setResult] = useState({ coins: null, message: null });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -29,15 +29,27 @@ const CoinCalculator = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setResult({ coins: [], message: null });
+    setResult({ coins: null, message: null });
     setError(null);
+
+    if (!targetAmount || selectedDenominations.length === 0) {
+      setError("Please enter a target amount and select at least one denomination.");
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await axios.post(`${process.env.REACT_APP_API_BASE_URL}/coins/calculate`, {
         targetAmount: parseFloat(targetAmount),
         coinDenominations: selectedDenominations,
       });
-      setResult(response.data);
+
+      // Handle cases where coins are null but a message is provided
+      if (response.data.coins === null && response.data.message) {
+        setResult(response.data);
+      } else {
+        setResult(response.data);
+      }
     } catch (err) {
       console.error("Error calculating coins:", err);
       setError(err.response?.data?.message || "An error occurred. Please try again.");
@@ -103,8 +115,8 @@ const CoinCalculator = () => {
 
       <div className="result-container">
         <h3>Calculation Result</h3>
-        <p>{result.message || "No message available."}</p>
-        {result.coins.length > 0 ? (
+        {result.message && <p>{result.message}</p>}
+        {result.coins && result.coins.length > 0 ? (
           <div>
             <h4>Coins:</h4>
             <ul>
@@ -114,9 +126,10 @@ const CoinCalculator = () => {
             </ul>
           </div>
         ) : (
-          <p>No coins in the result.</p>
+          !result.coins && result.message && (
+            <p>No coins in the result. Check the message for more details.</p>
+          )
         )}
-
       </div>
     </div>
   );
